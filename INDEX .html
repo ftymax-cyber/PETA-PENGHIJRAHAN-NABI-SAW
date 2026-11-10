@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Kronologi Perjalanan Hijrah Rasulullah SAW (3D)</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Three.js and OrbitControls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary: #8b5a2b; /* Brown/Parchment */
+            --secondary: #d4af37; /* Gold */
+            --dark: #2c1e16;
+            --light: #fdf5e6;
+            --ui-bg: rgba(253, 245, 230, 0.9);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark);
+            color: var(--dark);
+        }
+
+        /* 3D Canvas Container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        /* UI Layer */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none; /* Let clicks pass through to canvas */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        /* Re-enable pointer events for UI elements */
+        .interactive-ui {
+            pointer-events: auto;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: var(--ui-bg);
+            backdrop-filter: blur(8px);
+            border: 2px solid rgba(139, 90, 43, 0.3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+
+        .arabic-text {
+            font-family: 'Amiri', serif;
+            direction: rtl;
+        }
+
+        /* Subtitle Box */
+        .subtitle-box {
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 1.1rem;
+            line-height: 1.5;
+            text-shadow: 1px 1px 2px #000;
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: opacity 0.3s;
+        }
+
+        /* Timeline */
+        .timeline-node {
+            transition: all 0.3s;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            background-color: #ccc;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .timeline-node.active {
+            background-color: var(--secondary);
+            transform: scale(1.2);
+            box-shadow: 0 0 15px var(--secondary);
+        }
+        .timeline-node.completed {
+            background-color: var(--primary);
+        }
+
+        /* Buttons */
+        .btn-custom {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-custom:hover {
+            background: #704722;
+            transform: translateY(-2px);
+        }
+        .btn-custom:disabled {
+            background: #a0a0a0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.8);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-icon:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: var(--light);
+            border: 4px solid var(--primary);
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top:0; left:0; right:0; bottom:0;
+            background: var(--dark);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--light);
+            transition: opacity 0.5s;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(253, 245, 230, 0.3);
+            border-top-color: var(--secondary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .fade-out { opacity: 0; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="interactive-ui">
+        <h1 class="text-3xl font-bold mb-6 text-[#d4af37]">Membina Peta 3D...</h1>
+        <div class="spinner"></div>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <!-- Start Overlay (To bypass Audio Autoplay restrictions) -->
+    <div id="start-overlay" class="modal-overlay interactive-ui">
+        <div class="modal-content text-center">
+            <h1 class="text-3xl font-bold text-[#8b5a2b] mb-4">Kronologi Perjalanan Hijrah</h1>
+            <h2 class="text-xl text-gray-700 mb-6">Rasulullah SAW & Saidina Abu Bakar RA</h2>
+            <p class="mb-8 text-gray-600">Terokai peta sejarah 3D ini. Sila hidupkan audio peranti anda untuk mendengar penceritaan.</p>
+            <button id="btn-start-app" class="btn-custom mx-auto text-lg px-8 py-3 rounded-full">
+                <i class="fa-solid fa-play mr-2"></i> MULA PENGEMBARAAN
+            </button>
+        </div>
+    </div>
+
+    <!-- End Lesson Overlay -->
+    <div id="end-overlay" class="modal-overlay interactive-ui">
+        <div class="modal-content text-center bg-[#fdf5e6]">
+            <h2 class="text-3xl font-bold text-[#8b5a2b] mb-2 border-b-2 border-[#8b5a2b] pb-4 inline-block">Pengajaran daripada Peristiwa Hijrah</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 text-left">
+                <div class="bg-white p-4 rounded-lg shadow border border-[#d4c5b0] flex items-start gap-3">
+                    <div class="text-[#d4af37] text-2xl mt-1"><i class="fa-solid fa-hands-praying"></i></div>
+                    <div>
+                        <h4 class="font-bold text-[#8b5a2b]">Kesabaran</h4>
+                        <p class="text-sm text-gray-600">Menghadapi pelbagai ancaman musuh dengan tenang.</p>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border border-[#d4c5b0] flex items-start gap-3">
+                    <div class="text-[#d4af37] text-2xl mt-1"><i class="fa-solid fa-heart"></i></div>
+                    <div>
+                        <h4 class="font-bold text-[#8b5a2b]">Tawakal</h4>
+                        <p class="text-sm text-gray-600">Berserah kepada Allah SWT selepas merancang strategi.</p>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border border-[#d4c5b0] flex items-start gap-3">
+                    <div class="text-[#d4af37] text-2xl mt-1"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div>
+                        <h4 class="font-bold text-[#8b5a2b]">Keberanian</h4>
+                        <p class="text-sm text-gray-600">Saidina Abu Bakar RA setia menemani baginda walau berisiko tinggi.</p>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow border border-[#d4c5b0] flex items-start gap-3">
+                    <div class="text-[#d4af37] text-2xl mt-1"><i class="fa-solid fa-users"></i></div>
+                    <div>
+                        <h4 class="font-bold text-[#8b5a2b]">Persaudaraan</h4>
+                        <p class="text-sm text-gray-600">Sambutan Ansar membuktikan ukhuwah Islam yang teguh.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="btn-restart-app" class="btn-custom mx-auto mt-8 px-6 py-2">
+                <i class="fa-solid fa-rotate-left mr-2"></i> Ulang Semula
+            </button>
+        </div>
+    </div>
+
+    <!-- UI Layer -->
+    <div id="ui-layer" class="p-4 md:p-6 opacity-0 transition-opacity duration-500">
+        
+        <!-- Top Bar: Title & Audio/Mode Controls -->
+        <div class="flex justify-between items-start gap-4">
+            <!-- Info Panel (Left) -->
+            <div id="info-panel" class="glass-panel p-5 w-72 interactive-ui transform transition-transform duration-500 -translate-x-full">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="info-number" class="bg-[#8b5a2b] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm">1</span>
+                    <span id="info-ar" class="arabic-text text-2xl text-[#8b5a2b] font-bold">مَكَّةُ</span>
+                </div>
+                <h3 id="info-my" class="text-xl font-bold text-[#4a3319] mb-3 border-b pb-2">Makkah</h3>
+                <p id="info-desc" class="text-sm text-gray-700 leading-relaxed">Penerangan lokasi akan dipaparkan di sini.</p>
+            </div>
+
+            <!-- Global Controls (Right) -->
+            <div class="glass-panel p-2 flex gap-2 interactive-ui">
+                <button id="btn-toggle-audio" class="btn-icon" title="Tutup/Buka Suara">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+                <button id="btn-toggle-music" class="btn-icon" title="Tutup/Buka Muzik">
+                    <i class="fa-solid fa-music"></i>
+                </button>
+                <div class="w-px bg-gray-300 mx-1 my-2"></div>
+                <button id="btn-toggle-mode" class="btn-custom text-xs px-3" title="Tukar Mod (Auto/Manual)">
+                    Mod: AUTO
+                </button>
+            </div>
+        </div>
+
+        <!-- Subtitles -->
+        <div class="flex-grow flex items-end justify-center pb-4 pointer-events-none">
+            <div id="subtitle-container" class="subtitle-box opacity-0">
+                <p id="subtitle-text"></p>
+            </div>
+        </div>
+
+        <!-- Bottom Bar: Timeline & Controls -->
+        <div class="glass-panel p-4 interactive-ui mt-auto mx-auto w-full max-w-4xl flex flex-col gap-4 shadow-2xl">
+            <!-- Controls -->
+            <div class="flex justify-center items-center gap-4">
+                <button id="btn-prev" class="btn-icon" disabled><i class="fa-solid fa-backward-step"></i></button>
+                
+                <button id="btn-play-pause" class="btn-custom px-6 py-3 text-lg rounded-full">
+                    <i class="fa-solid fa-play mr-2"></i> MULA
+                </button>
+                
+                <button id="btn-next" class="btn-icon"><i class="fa-solid fa-forward-step"></i></button>
+                <button id="btn-replay-audio" class="btn-icon ml-4" title="Ulang Suara"><i class="fa-solid fa-ear-listen"></i></button>
+            </div>
+
+            <!-- Timeline -->
+            <div class="relative w-full px-4">
+                <div class="absolute top-1/2 left-0 right-0 h-1 bg-gray-300 -translate-y-1/2 z-0 mx-8"></div>
+                <div class="relative z-10 flex justify-between">
+                    <div class="flex flex-col items-center gap-1 cursor-pointer" onclick="jumpToPoint(0)">
+                        <div id="node-0" class="timeline-node active">1</div>
+                        <span class="text-xs font-bold text-[#8b5a2b]">Makkah</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 cursor-pointer" onclick="jumpToPoint(1)">
+                        <div id="node-1" class="timeline-node">2</div>
+                        <span class="text-xs font-bold text-[#8b5a2b]">Gua Thur</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 cursor-pointer" onclick="jumpToPoint(2)">
+                        <div id="node-2" class="timeline-node">3</div>
+                        <span class="text-xs font-bold text-[#8b5a2b]">Quba</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1 cursor-pointer" onclick="jumpToPoint(3)">
+                        <div id="node-3" class="timeline-node">4</div>
+                        <span class="text-xs font-bold text-[#8b5a2b]">Madinah</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Application -->
+    <script>
+        // --- Data Perjalanan (Journey Data) ---
+        const journeyData = [
+            {
+                id: 'makkah',
+                index: 0,
+                progress: 0.0,
+                pos: { x: -35, z: 35 }, // Top-ish Left
+                titleMy: "Makkah",
+                titleAr: "مَكَّةُ الْمُكَرَّمَةُ",
+                desc: "Perjalanan hijrah Rasulullah SAW bermula dari kota Makkah. Baginda meninggalkan tanah air tercinta demi menyelamatkan akidah dan menyebarkan Islam.",
+                narrative: "Perjalanan hijrah Rasulullah S A W bermula dari kota Makkah. Baginda meninggalkan tanah air tercinta demi menyelamatkan akidah dan menyebarkan Islam. Perjalanan ini memerlukan pengorbanan, keberanian dan keimanan yang tinggi."
+            },
+            {
+                id: 'thur',
+                index: 1,
+                progress: 0.15,
+                pos: { x: -45, z: 45 }, // Slightly south-west
+                titleMy: "Gua Thur",
+                titleAr: "غَارُ ثَوْرٍ",
+                desc: "Rasulullah SAW bersama Saidina Abu Bakar al-Siddiq RA berlindung di sini selama tiga malam daripada ancaman musuh.",
+                narrative: "Seterusnya, Rasulullah S A W bersama Saidina Abu Bakar as-Siddiq R A berlindung di Gua Thur selama tiga malam. Mereka bersembunyi daripada ancaman kaum Quraisy. Peristiwa ini mengajar kita tentang kepentingan kesabaran dan tawakal kepada Allah S W T."
+            },
+            {
+                id: 'quba',
+                index: 2,
+                progress: 0.85,
+                pos: { x: 25, z: -25 }, // Across desert
+                titleMy: "Quba",
+                titleAr: "قُبَاءُ",
+                desc: "Ketibaan baginda disambut gembira. Di sinilah terbinanya Masjid Quba, masjid pertama dalam sejarah Islam.",
+                narrative: "Selepas meninggalkan Gua Thur dan meneruskan perjalanan yang panjang merentasi padang pasir, Rasulullah S A W akhirnya tiba di Quba. Ketibaan baginda disambut dengan penuh kegembiraan. Di Quba, Rasulullah S A W membina Masjid Quba, masjid pertama yang dibina dalam sejarah Islam."
+            },
+            {
+                id: 'madinah',
+                index: 3,
+                progress: 1.0,
+                pos: { x: 40, z: -40 }, // Final destination
+                titleMy: "Madinah",
+                titleAr: "الْمَدِينَةُ الْمُنَوَّرَةُ",
+                desc: "Rasulullah SAW tiba di Madinah dan disambut oleh penduduk Ansar. Bermulalah pembentukan masyarakat Islam.",
+                narrative: "Akhirnya, Rasulullah S A W tiba di Madinah. Penduduk Ansar menyambut kedatangan baginda dengan penuh kasih sayang dan kegembiraan. Peristiwa hijrah ini menjadi permulaan kepada pembentukan masyarakat Islam yang bersatu padu di Madinah."
+            }
+        ];
+
+        // --- Application State ---
+        let state = {
+            initialized: false,
+            currentPoint: 0,
+            progress: 0,      // 0.0 to 1.0
+            isAnimating: false,
+            isAutoMode: true,
+            audioEnabled: true,
+            musicEnabled: true,
+            synthesisReady: false
+        };
+
+        // --- Core Elements ---
+        const ui = {
+            loadingScreen: document.getElementById('loading-screen'),
+            startOverlay: document.getElementById('start-overlay'),
+            endOverlay: document.getElementById('end-overlay'),
+            uiLayer: document.getElementById('ui-layer'),
+            
+            infoPanel: document.getElementById('info-panel'),
+            infoNumber: document.getElementById('info-number'),
+            infoAr: document.getElementById('info-ar'),
+            infoMy: document.getElementById('info-my'),
+            infoDesc: document.getElementById('info-desc'),
+            
+            subtitleContainer: document.getElementById('subtitle-container'),
+            subtitleText: document.getElementById('subtitle-text'),
+            
+            btnStartApp: document.getElementById('btn-start-app'),
+            btnRestartApp: document.getElementById('btn-restart-app'),
+            btnPlayPause: document.getElementById('btn-play-pause'),
+            btnNext: document.getElementById('btn-next'),
+            btnPrev: document.getElementById('btn-prev'),
+            btnReplayAudio: document.getElementById('btn-replay-audio'),
+            btnToggleAudio: document.getElementById('btn-toggle-audio'),
+            btnToggleMusic: document.getElementById('btn-toggle-music'),
+            btnToggleMode: document.getElementById('btn-toggle-mode'),
+        };
+
+        // --- Speech Synthesis & Web Audio API (Ambient Music) ---
+        let speechSynth = window.speechSynthesis;
+        let currentUtterance = null;
+        let audioContext = null;
+        let ambientOscillators = [];
+        let ambientGain = null;
+
+        function initAudio() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioContext = new AudioContext();
+                
+                // Create a gentle desert drone (ambient pad)
+                ambientGain = audioContext.createGain();
+                ambientGain.gain.value = 0.05; // Low volume
+                ambientGain.connect(audioContext.destination);
+
+                // Two oscillators for a slightly evolving drone
+                const frequencies = [110, 111.5, 164.8]; // A2, slightly detuned A2, E3
+                frequencies.forEach(freq => {
+                    let osc = audioContext.createOscillator();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    osc.connect(ambientGain);
+                    osc.start();
+                    ambientOscillators.push(osc);
+                });
+                
+                if(!state.musicEnabled) {
+                    ambientGain.gain.value = 0;
+                }
+            } catch (e) {
+                console.log("Web Audio API not supported", e);
+            }
+            state.synthesisReady = true;
+        }
+
+        function playMusic() {
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            if(ambientGain) {
+                ambientGain.gain.setTargetAtTime(0.05, audioContext.currentTime, 1.0);
+            }
+            state.musicEnabled = true;
+            ui.btnToggleMusic.innerHTML = '<i class="fa-solid fa-music"></i>';
+        }
+
+        function pauseMusic() {
+            if(ambientGain && audioContext) {
+                ambientGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.5);
+            }
+            state.musicEnabled = false;
+            ui.btnToggleMusic.innerHTML = '<i class="fa-solid fa-music text-gray-400"></i>';
+        }
+
+        function speak(text, callback) {
+            if (!state.audioEnabled || !speechSynth) {
+                if (callback) setTimeout(callback, 3000); // Fake delay if no audio
+                return;
+            }
+
+            speechSynth.cancel(); // Stop any ongoing speech
+            
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            
+            // Try to find a Malay or Indonesian voice
+            let voices = speechSynth.getVoices();
+            let preferredVoice = voices.find(v => v.lang.includes('ms') || v.lang.includes('id'));
+            if (preferredVoice) {
+                currentUtterance.voice = preferredVoice;
+            }
+            
+            currentUtterance.lang = 'ms-MY';
+            currentUtterance.rate = 0.9; // Slightly slower for clarity
+            currentUtterance.pitch = 1.0;
+
+            currentUtterance.onend = () => {
+                if (callback && state.isAutoMode && !state.isAnimating) {
+                    // Only auto-advance if we are in auto mode and not currently moving
+                    callback();
+                }
+            };
+            
+            currentUtterance.onerror = (e) => {
+                console.log("Speech Error:", e);
+                if (callback) setTimeout(callback, 3000);
+            };
+
+            speechSynth.speak(currentUtterance);
+        }
+
+        function stopSpeech() {
+            if (speechSynth) speechSynth.cancel();
+        }
+
+        // --- Three.js Setup ---
+        let scene, camera, renderer, controls;
+        let journeyCurve, markerGroup, glowingPath;
+        let animationFrameId;
+        
+        // Materials
+        const matSand = new THREE.MeshStandardMaterial({ color: 0xdeb887, roughness: 0.9 });
+        const matDune = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 1.0 });
+        const matRock = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.8 });
+        const matPlant = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
+        const matHouse = new THREE.MeshStandardMaterial({ color: 0xf5f5dc, roughness: 0.5 });
+        const matGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87ceeb); // Sky blue
+            scene.fog = new THREE.FogExp2(0x87ceeb, 0.005);
+
+            // Camera (Isometric perspective)
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.set(-60, 80, 80);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2.2; // Don't go below ground
+            controls.minDistance = 20;
+            controls.maxDistance = 200;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(50, 100, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.camera.near = 0.5;
+            dirLight.shadow.camera.far = 300;
+            dirLight.shadow.camera.left = -100;
+            dirLight.shadow.camera.right = 100;
+            dirLight.shadow.camera.top = 100;
+            dirLight.shadow.camera.bottom = -100;
+            scene.add(dirLight);
+
+            buildEnvironment();
+            buildJourneyPath();
+            buildMarker();
+
+            // Resize handler
+            window.addEventListener('resize', onWindowResize, false);
+
+            // Ready
+            ui.loadingScreen.classList.add('fade-out');
+            ui.startOverlay.classList.add('active');
+            
+            animate3D();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- World Building Helpers ---
+        function addHouse(x, z, scale=1) {
+            const geom = new THREE.BoxGeometry(3*scale, 3*scale, 3*scale);
+            const mesh = new THREE.Mesh(geom, matHouse);
+            mesh.position.set(x, 1.5*scale, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+        }
+
+        function addTree(x, z, scale=1) {
+            const trunkGeo = new THREE.CylinderGeometry(0.2*scale, 0.3*scale, 2*scale, 8);
+            const trunkMat = new THREE.MeshStandardMaterial({color: 0x654321});
+            const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+            trunk.position.set(x, 1*scale, z);
+            trunk.castShadow = true;
+            
+            const leavesGeo = new THREE.SphereGeometry(1.2*scale, 8, 8);
+            const leaves = new THREE.Mesh(leavesGeo, matPlant);
+            leaves.position.set(0, 1.5*scale, 0);
+            leaves.castShadow = true;
+            
+            trunk.add(leaves);
+            scene.add(trunk);
+        }
+
+        function addMountain(x, z, radius, height) {
+            const geom = new THREE.ConeGeometry(radius, height, 16);
+            // Randomize vertices a bit for rugged look
+            const pos = geom.attributes.position;
+            for(let i=0; i<pos.count; i++) {
+                if(pos.getY(i) < height/2) {
+                    pos.setX(i, pos.getX(i) + (Math.random()-0.5)*2);
+                    pos.setZ(i, pos.getZ(i) + (Math.random()-0.5)*2);
+                }
+            }
+            geom.computeVertexNormals();
+            const mesh = new THREE.Mesh(geom, matRock);
+            mesh.position.set(x, height/2, z);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+        }
+
+        function buildEnvironment() {
+            // Ground Plane
+            const groundGeo = new THREE.PlaneGeometry(300, 300, 64, 64);
+            // Slight displacement for dunes
+            const pos = groundGeo.attributes.position;
+            for(let i=0; i<pos.count; i++) {
+                let x = pos.getX(i);
+                let y = pos.getY(i);
+                let zNoise = Math.sin(x*0.1)*Math.cos(y*0.1) * 2;
+                pos.setZ(i, zNoise);
+            }
+            groundGeo.computeVertexNormals();
+            const ground = new THREE.Mesh(groundGeo, matSand);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Makkah Area (x: -35, z: 35)
+            // Kaaba placeholder
+            const kaabaGeo = new THREE.BoxGeometry(4, 4.5, 4);
+            const kaabaMat = new THREE.MeshStandardMaterial({color: 0x111111});
+            const kaaba = new THREE.Mesh(kaabaGeo, kaabaMat);
+            kaaba.position.set(-35, 2.25, 35);
+            kaaba.castShadow = true;
+            scene.add(kaaba);
+            // Add some houses
+            addHouse(-30, 40, 0.8); addHouse(-40, 32, 1); addHouse(-32, 30, 0.7);
+
+            // Gua Thur Area (x: -45, z: 45) - Mountains
+            addMountain(-48, 48, 8, 15);
+            addMountain(-42, 50, 6, 12);
+            // Cave hole (fake it with a black sphere)
+            const caveHoleGeo = new THREE.SphereGeometry(1.5, 8, 8);
+            const caveHoleMat = new THREE.MeshBasicMaterial({color: 0x000000});
+            const caveHole = new THREE.Mesh(caveHoleGeo, caveHoleMat);
+            caveHole.position.set(-45, 2, 45);
+            scene.add(caveHole);
+
+            // Desert scatter (Dunes, rocks)
+            for(let i=0; i<20; i++) {
+                let rx = (Math.random()-0.5)*150;
+                let rz = (Math.random()-0.5)*150;
+                // Keep away from locations
+                if (Math.abs(rx) < 20 || Math.abs(rz) < 20) continue; 
+                addTree(rx, rz, Math.random()*0.5 + 0.5);
+            }
+
+            // Quba Area (x: 25, z: -25) - Oasis
+            addTree(23, -23, 1.2); addTree(27, -26, 1.5); addTree(24, -28, 1);
+            addHouse(25, -25, 1.2); // Simple Quba mosque rep
+            
+            // Madinah Area (x: 40, z: -40) - Settlement
+            addHouse(40, -40, 1.5); addHouse(35, -38, 1); addHouse(43, -42, 1.2);
+            addHouse(38, -45, 0.9);
+            addTree(37, -42, 1); addTree(42, -37, 1);
+            
+            // Add a light over Madinah to make it glowing (Al-Munawwarah)
+            const madinahLight = new THREE.PointLight(0xffd700, 1, 50);
+            madinahLight.position.set(40, 10, -40);
+            scene.add(madinahLight);
+        }
+
+        function buildJourneyPath() {
+            // Points mapping the journey
+            const p1 = new THREE.Vector3(journeyData[0].pos.x, 0.5, journeyData[0].pos.z);
+            const p2 = new THREE.Vector3(journeyData[1].pos.x, 0.5, journeyData[1].pos.z);
+            // Mid curve to simulate avoiding main routes
+            const pMid = new THREE.Vector3(-10, 0.5, 10);
+            const p3 = new THREE.Vector3(journeyData[2].pos.x, 0.5, journeyData[2].pos.z);
+            const p4 = new THREE.Vector3(journeyData[3].pos.x, 0.5, journeyData[3].pos.z);
+
+            journeyCurve = new THREE.CatmullRomCurve3([p1, p2, pMid, p3, p4]);
+            journeyCurve.tension = 0.3; // Make it a bit more angular at points
+
+            // Draw dotted line / glowing tube
+            const tubeGeo = new THREE.TubeGeometry(journeyCurve, 200, 0.3, 8, false);
+            const tubeMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.4 });
+            glowingPath = new THREE.Mesh(tubeGeo, tubeMat);
+            scene.add(glowingPath);
+        }
+
+        function buildMarker() {
+            // Abstract Camel / Traveler Marker
+            markerGroup = new THREE.Group();
+            
+            // Body (Diamond shape)
+            const bodyGeo = new THREE.OctahedronGeometry(1.5, 0);
+            const bodyMesh = new THREE.Mesh(bodyGeo, matGold);
+            bodyMesh.position.y = 2;
+            bodyMesh.castShadow = true;
+            markerGroup.add(bodyMesh);
+
+            // Pulse ring
+            const ringGeo = new THREE.RingGeometry(2, 2.5, 16);
+            const ringMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = 0.5;
+            markerGroup.add(ring);
+            
+            // Attach animation data to ring
+            markerGroup.userData = { ring: ring, time: 0 };
+            
+            // Set initial pos
+            const startPos = journeyCurve.getPointAt(0);
+            markerGroup.position.copy(startPos);
+            scene.add(markerGroup);
+        }
+
+        // --- Animation Loop ---
+        function animate3D() {
+            animationFrameId = requestAnimationFrame(animate3D);
+
+            // Idle marker animation
+            markerGroup.userData.time += 0.05;
+            markerGroup.position.y = Math.sin(markerGroup.userData.time) * 0.5; // Hover
+            const ringScale = 1 + Math.sin(markerGroup.userData.time * 2) * 0.2;
+            markerGroup.userData.ring.scale.set(ringScale, ringScale, 1);
+            markerGroup.userData.ring.material.opacity = 0.5 - (ringScale - 1);
+
+            // Journey Progress Animation
+            if (state.isAnimating) {
+                const targetProg = journeyData[state.currentPoint].progress;
+                
+                if (state.progress < targetProg) {
+                    state.progress += 0.002; // Speed of travel
+                    if (state.progress >= targetProg) {
+                        state.progress = targetProg;
+                        completeSegment();
+                    }
+                } else if (state.progress > targetProg) {
+                     state.progress -= 0.004; // Faster when going backwards
+                     if (state.progress <= targetProg) {
+                        state.progress = targetProg;
+                        completeSegment();
+                     }
+                }
+                
+                // Move marker
+                const pos = journeyCurve.getPointAt(state.progress);
+                markerGroup.position.set(pos.x, markerGroup.position.y, pos.z);
+                
+                // Camera follows marker gently
+                const targetCamPos = new THREE.Vector3(pos.x + 30, 40, pos.z + 30);
+                camera.position.lerp(targetCamPos, 0.03);
+                controls.target.lerp(new THREE.Vector3(pos.x, 0, pos.z), 0.05);
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // --- Logic & Control Functions ---
+
+        function focusCameraOn(index) {
+            const data = journeyData[index];
+            const targetPos = new THREE.Vector3(data.pos.x, 0, data.pos.z);
+            const targetCamPos = new THREE.Vector3(data.pos.x + 25, 30, data.pos.z + 25);
+            
+            // Manual gsap-like interpolation
+            let step = 0;
+            const camStart = camera.position.clone();
+            const lookStart = controls.target.clone();
+            
+            function animateFocus() {
+                step += 0.02;
+                if (step <= 1) {
+                    // Ease out cubic
+                    const t = 1 - Math.pow(1 - step, 3);
+                    camera.position.lerpVectors(camStart, targetCamPos, t);
+                    controls.target.lerpVectors(lookStart, targetPos, t);
+                    requestAnimationFrame(animateFocus);
+                } else {
+                    camera.position.copy(targetCamPos);
+                    controls.target.copy(targetPos);
+                }
+            }
+            animateFocus();
+        }
+
+        function updateUI() {
+            const data = journeyData[state.currentPoint];
+            
+            // Info Panel
+            ui.infoNumber.textContent = data.index + 1;
+            ui.infoAr.textContent = data.titleAr;
+            ui.infoMy.textContent = data.titleMy;
+            ui.infoDesc.textContent = data.desc;
+            
+            // Subtitle Box (Hide initially, show when speaking)
+            ui.subtitleText.textContent = data.narrative;
+            ui.subtitleContainer.style.opacity = '1';
+            
+            // Timeline Nodes
+            for(let i=0; i<4; i++) {
+                const node = document.getElementById(`node-${i}`);
+                node.className = 'timeline-node';
+                if (i < state.currentPoint) node.classList.add('completed');
+                else if (i === state.currentPoint) node.classList.add('active');
+            }
+
+            // Buttons state
+            ui.btnPrev.disabled = (state.currentPoint === 0);
+            
+            if (state.currentPoint === 3) {
+                // At Madinah
+                ui.btnPlayPause.innerHTML = '<i class="fa-solid fa-flag-checkered mr-2"></i> TAMAT';
+                ui.btnNext.disabled = true;
+            } else {
+                ui.btnPlayPause.innerHTML = '<i class="fa-solid fa-play mr-2"></i> SAMBUNG';
+                ui.btnNext.disabled = false;
+            }
+
+            // Slide in Info Panel
+            ui.infoPanel.classList.remove('-translate-x-full');
+        }
+
+        function completeSegment() {
+            state.isAnimating = false;
+            
+            // Trigger UI updates and Voice
+            updateUI();
+            
+            // Small delay before speaking
+            setTimeout(() => {
+                speak(journeyData[state.currentPoint].narrative, () => {
+                    // Callback when speech ends
+                    if (state.isAutoMode && state.currentPoint < 3 && !state.isAnimating) {
+                        // Auto advance after 2 seconds
+                        setTimeout(() => {
+                            if(!state.isAnimating && state.isAutoMode) {
+                                ui.subtitleContainer.style.opacity = '0';
+                                startJourneyTo(state.currentPoint + 1);
+                            }
+                        }, 2000);
+                    } else if (state.currentPoint === 3) {
+                        // Show End Screen
+                        setTimeout(() => {
+                            ui.endOverlay.classList.add('active');
+                        }, 2000);
+                    } else {
+                        // Hide subtitle if manual
+                         ui.subtitleContainer.style.opacity = '0';
+                    }
+                });
+            }, 1000);
+        }
+
+        function startJourneyTo(index) {
+            if (index < 0 || index > 3) return;
+            
+            stopSpeech();
+            ui.subtitleContainer.style.opacity = '0';
+            ui.infoPanel.classList.add('-translate-x-full');
+            
+            state.currentPoint = index;
+            state.isAnimating = true;
+            
+            ui.btnPlayPause.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> BERGERAK...';
+        }
+
+        function jumpToPoint(index) {
+            if (state.isAnimating) return;
+            stopSpeech();
+            state.currentPoint = index;
+            state.progress = journeyData[index].progress;
+            
+            // Update Marker instantly
+            const pos = journeyCurve.getPointAt(state.progress);
+            markerGroup.position.set(pos.x, markerGroup.position.y, pos.z);
+            
+            focusCameraOn(index);
+            updateUI();
+            
+            // Re-narrate
+            setTimeout(() => {
+                speak(journeyData[index].narrative);
+            }, 500);
+        }
+
+        // --- Event Listeners ---
+        ui.btnStartApp.addEventListener('click', () => {
+            initAudio(); // Needs user gesture
+            ui.startOverlay.classList.remove('active');
+            ui.uiLayer.style.opacity = '1';
+            
+            setTimeout(() => {
+                focusCameraOn(0);
+                completeSegment(); // Start first narration
+            }, 500);
+        });
+
+        ui.btnPlayPause.addEventListener('click', () => {
+            if (state.isAnimating) return; // Prevent spam
+            if (state.currentPoint === 3) {
+                ui.endOverlay.classList.add('active');
+            } else {
+                startJourneyTo(state.currentPoint + 1);
+            }
+        });
+
+        ui.btnNext.addEventListener('click', () => {
+            if (!state.isAnimating && state.currentPoint < 3) {
+                startJourneyTo(state.currentPoint + 1);
+            }
+        });
+
+        ui.btnPrev.addEventListener('click', () => {
+             if (!state.isAnimating && state.currentPoint > 0) {
+                startJourneyTo(state.currentPoint - 1);
+            }
+        });
+
+        ui.btnReplayAudio.addEventListener('click', () => {
+            speak(journeyData[state.currentPoint].narrative);
+            ui.subtitleContainer.style.opacity = '1';
+        });
+
+        ui.btnToggleAudio.addEventListener('click', () => {
+            state.audioEnabled = !state.audioEnabled;
+            if (!state.audioEnabled) stopSpeech();
+            ui.btnToggleAudio.innerHTML = state.audioEnabled ? 
+                '<i class="fa-solid fa-volume-high"></i>' : 
+                '<i class="fa-solid fa-volume-xmark text-gray-400"></i>';
+        });
+
+        ui.btnToggleMusic.addEventListener('click', () => {
+            if(state.musicEnabled) pauseMusic();
+            else playMusic();
+        });
+
+        ui.btnToggleMode.addEventListener('click', () => {
+            state.isAutoMode = !state.isAutoMode;
+            ui.btnToggleMode.textContent = `Mod: ${state.isAutoMode ? 'AUTO' : 'MANUAL'}`;
+            ui.btnToggleMode.style.background = state.isAutoMode ? 'var(--primary)' : '#4a5568'; // brown vs gray
+        });
+
+        ui.btnRestartApp.addEventListener('click', () => {
+            ui.endOverlay.classList.remove('active');
+            jumpToPoint(0);
+            state.isAutoMode = false; // Switch to manual after first full auto run
+            ui.btnToggleMode.textContent = `Mod: MANUAL`;
+            ui.btnToggleMode.style.background = '#4a5568';
+        });
+
+        // Initialize App
+        window.addEventListener('load', () => {
+            // Load voices early
+            if ('speechSynthesis' in window) {
+                speechSynth.onvoiceschanged = () => {
+                    // pre-load voices
+                    speechSynth.getVoices();
+                };
+            }
+            init3D();
+        });
+
+    </script>
+</body>
+</html>
